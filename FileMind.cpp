@@ -138,62 +138,66 @@ public:
         if (concurrent_hashers == 0) this->concurrent_hashers = 1;
     }
 
-    void scan() {
-        log_msg(LogLevel::INFO, "Starting scan. I will quietly judge your folder structure.");
-        start_time = std::chrono::steady_clock::now();
 
-        uint64_t scanned = 0;
-        try {
-            for (auto const& dir_entry : fs::recursive_directory_iterator(root_path, ec,
-                    (follow_symlinks ? fs::directory_options::follow_directory_symlink : fs::directory_options::none))) {
-                if (ec) {
-                    log_msg(LogLevel::WARN, std::string("Filesystem iteration error: ") + ec.message());
-                    ec.clear();
-                    continue;
+    void scan() {
+    log_msg(LogLevel::INFO, "Starting scan. I will quietly judge your folder structure.");
+    start_time = std::chrono::steady_clock::now();
+
+    uint64_t scanned = 0;
+    try {
+        auto options = follow_symlinks ? fs::directory_options::follow_directory_symlink : fs::directory_options::none;
+        
+        for (auto const& dir_entry : fs::recursive_directory_iterator(
+            root_path, options, ec)) {
+            
+            if (ec) {
+                log_msg(LogLevel::WARN, std::string("Filesystem iteration error: ") + ec.message());
+                ec.clear();
+                continue;
+            }
+            if (dir_entry.is_regular_file(ec)) {
+                ++scanned;
+                fs::path p = dir_entry.path();
+                std::error_code local_ec;
+                auto ftime = dir_entry.last_write_time(local_ec);
+                if (local_ec) ftime = fs::file_time_type::clock::now();
+                uint64_t sz = 0;
+                try {
+                    sz = static_cast<uint64_t>(dir_entry.file_size());
+                } catch (...) {
+                    sz = 0;
                 }
-                if (dir_entry.is_regular_file(ec)) {
-                    ++scanned;
-                    fs::path p = dir_entry.path();
-                    std::error_code local_ec;
-                    auto ftime = dir_entry.last_write_time(local_ec);
-                    if (local_ec) ftime = fs::file_time_type::clock::now();
-                    uint64_t sz = 0;
-                    try {
-                        sz = static_cast<uint64_t>(dir_entry.file_size());
-                    } catch (...) {
-                        sz = 0;
-                    }
-                    FileRecord rec;
-                    rec.path = p;
-                    rec.size = sz;
-                    rec.extension = get_extension_lower(p);
-                    rec.modified = file_time_to_string(ftime);
-                    {
-                        std::lock_guard<std::mutex> lk(data_mutex);
-                        files.push_back(std::move(rec));
-                        total_files++;
-                        total_size += sz;
-                        ext_count[files.back().extension] += 1;
-                        ext_size[files.back().extension] += sz;
-                    }
-                    if ((scanned & 0xFFF) == 0) {
-                        log_msg(LogLevel::DEBUG, "Scanned " + std::to_string(scanned) + " files so far...");
-                    }
+                FileRecord rec;
+                rec.path = p;
+                rec.size = sz;
+                rec.extension = get_extension_lower(p);
+                rec.modified = file_time_to_string(ftime);
+                {
+                    std::lock_guard<std::mutex> lk(data_mutex);
+                    files.push_back(std::move(rec));
+                    total_files++;
+                    total_size += sz;
+                    ext_count[files.back().extension] += 1;
+                    ext_size[files.back().extension] += sz;
+                }
+                if ((scanned & 0xFFF) == 0) {
+                    log_msg(LogLevel::DEBUG, "Scanned " + std::to_string(scanned) + " files so far...");
                 }
             }
-        } catch (const std::exception& ex) {
-            log_msg(LogLevel::ERROR, std::string("Exception during scan: ") + ex.what());
         }
-
-        end_time = std::chrono::steady_clock::now();
-        std::chrono::duration<double> dur = end_time - start_time;
-        log_msg(LogLevel::INFO, "Filesystem walk completed: " + std::to_string(total_files) + " files, " + human_readable_size(total_size) + " in " + std::to_string(dur.count()) + "s.");
-
-        {
-            std::lock_guard<std::mutex> lk(data_mutex);
-            std::sort(files.begin(), files.end(), [](const FileRecord& a, const FileRecord& b){ return a.size > b.size; });
-        }
+    } catch (const std::exception& ex) {
+        log_msg(LogLevel::ERROR, std::string("Exception during scan: ") + ex.what());
     }
+
+    end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> dur = end_time - start_time;
+    log_msg(LogLevel::INFO, "Filesystem walk completed: " + std::to_string(total_files) + " files, " + human_readable_size(total_size) + " in " + std::to_string(dur.count()) + "s.");
+
+    {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        std::sort(files.begin(), files.end(), [](const FileRecord& a, const FileRecord& b){ return a.size > b.size; });
+    }
+}
 
     void compute_fingerprints(bool concurrent = true, size_t limit_threads = 0) {
         if (files.empty()) return;
