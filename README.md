@@ -1,10 +1,15 @@
 # FileMind
+<p align="center">
+  <a href="https://isocpp.org/">
+    <img src="https://img.shields.io/badge/C%2B%2B-17-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white" alt="C++17">
+  </a>
+  <img src="https://img.shields.io/badge/build-passing-4CAF50?style=for-the-badge&logo=githubactions&logoColor=white" alt="Build">
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=for-the-badge&logo=open-source-initiative&logoColor=white" alt="License: MIT">
+  </a>
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-333333?style=for-the-badge&logo=linux&logoColor=white" alt="Platforms">
+</p>
 
-[![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://isocpp.org/)
-[![Build](https://img.shields.io/badge/build-passing-success.svg)](#)
-[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-black.svg)](#)
-[![Lines of code](https://img.shields.io/badge/loc-400%2B-brightgreen.svg)](#)
 
 ---
 
